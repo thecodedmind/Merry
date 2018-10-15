@@ -5,9 +5,68 @@ import json
 from functools import partial
 import tkinter.messagebox
 import socket
+import os
+
+scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
 fmod = {}
 
+class CreateToolTip(object):
+    """
+    create a tooltip for a given widget
+    """
+    def __init__(self, widget, text='widget info'):
+        self.waittime = 500     #miliseconds
+        self.wraplength = 180   #pixels
+        self.widget = widget
+        self.text = text
+        self.widget.bind("<Enter>", self.enter)
+        self.widget.bind("<Leave>", self.leave)
+        self.widget.bind("<ButtonPress>", self.leave)
+        self.id = None
+        self.tw = None
+		
+    def enter(self, event=None):
+        self.schedule()
+
+    def leave(self, event=None):
+        self.unschedule()
+        self.hidetip()
+
+    def schedule(self):
+        self.unschedule()
+        self.id = self.widget.after(self.waittime, self.showtip)
+
+    def unschedule(self):
+        id = self.id
+        self.id = None
+        if id:
+            self.widget.after_cancel(id)
+
+    def showtip(self, event=None):
+        x = y = 0
+        x, y, cx, cy = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 20
+        # creates a toplevel window
+        self.tw = tkinter.Toplevel(self.widget)
+        # Leaves only the label and removes the app window
+        self.tw.wm_overrideredirect(True)
+        self.tw.wm_geometry("+%d+%d" % (x, y))
+        label = tkinter.Label(self.tw, text=self.text, justify='left',
+                       background="#ffffff", relief='solid', borderwidth=1,
+                       wraplength = self.wraplength)
+        label.pack(ipadx=1)
+
+    def hidetip(self):
+        tw = self.tw
+        self.tw= None
+        if tw:
+            tw.destroy()
+     
+    def __str__(self):
+        return "CreateToolTip"
+	
 def internet(host="8.8.8.8", port=53, timeout=3):
 	try:
 		socket.setdefaulttimeout(timeout)
@@ -124,7 +183,7 @@ def install():
 	w = tkinter.Tk()
 	en = tkinter.Entry(w)
 	run_inst = partial(install_module, en)
-	b = tkinter.Button(w, text="Install", command=run_inst)
+	b = tkinter.Button(w, text="Install", command=run_inst, cursor="hand1")
 	en.grid()
 	b.grid(row=1)
 	w.title("Installer")
@@ -134,8 +193,9 @@ def uninstall():
 	mod = merrygui.modules.curselection()[0]
 	mod += 1
 	if tkinter.messagebox.askokcancel(title=f"Uninstall {fmod[mod][0]}", message=f"{fmod[mod][0]} {fmod[mod][1]} will be COMPLETELY uninstalled."):
-		res = subprocess.run([merrygui.pip, "uninstall", fmod[mod][0]], stdout=subprocess.PIPE)
+		res = subprocess.run([merrygui.pip, "uninstall", "-y", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
+		merrygui.modules.delete(mod-1)
 		r = tkinter.Tk()
 		lb = tkinter.Label(r, text=output)
 		lb.grid()
@@ -152,6 +212,7 @@ def update():
 		else:
 			res = subprocess.run([merrygui.pip, "install", "--upgrade", "--user", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
+		merrygui.modules.delete(mod-1)
 		r = tkinter.Tk()
 		lb = tkinter.Label(r, text=output)
 		lb.grid()
@@ -171,6 +232,7 @@ def onselect(evt):
 def reconnect():
 	if internet():
 		merrygui.b_updatecheck.config(state="normal")
+		merrygui.b_install.config(state="normal")
 		merrygui.b_rec.destroy()
 		merrygui.online = True
 		merrygui.infolab.config(text="Reconnected to network!")
@@ -192,23 +254,33 @@ class pipGuiMan:
 		ubi = partial(get_modules, self)
 		self.infolab = tkinter.Label(self.mainwin, text="Selected info will appear here.")
 		self.infolab.grid(row=6, columnspan=6)
-		self.b_updatecheck = tkinter.Button(self.mainwin, text="Check for updates", command=ub)
+		self.b_updatecheck = tkinter.Button(self.mainwin, text="Check for updates", command=ub, cursor="hand1")
+		self.b_listall = tkinter.Button(self.mainwin, text="Show installed modules", command=ubi, cursor="hand1")
+		self.b_install = tkinter.Button(self.mainwin, text="Install...", command=install, cursor="hand1")
+		self.b_uninstall = tkinter.Button(self.mainwin, text="Uninstall", command=uninstall, state="disabled", cursor="hand1")
+		self.b_update = tkinter.Button(self.mainwin, text="Update", command=update, state="disabled", cursor="hand1")
+		self.b_updatecheck.grid(column=4, row=0)
+		CreateToolTip(self.b_updatecheck, "Gets outdated modules list.\nNOTE: Will take a few moments.")
+		self.b_listall.grid(column=4, row=1)
+		CreateToolTip(self.b_listall, "Gets installed modules list.\nNOTE: Will take a few moments.")
+		self.b_install.grid(column=4, row=2)
+		CreateToolTip(self.b_install, "Opens the Installer window. Enter a module name to download and install using pip.")
+		self.b_uninstall.grid(column=4, row=3)
+		CreateToolTip(self.b_uninstall, "Completely uninstalls the module selected in the list.")
+		self.b_update.grid(column=4, row=4)
+		CreateToolTip(self.b_update, "Updates the selected module in the list.")
+		self.mainwin.title("Merry (pip GUI)")
+		imgicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'icon.png'))
+		self.mainwin.tk.call('wm', 'iconphoto', self.mainwin, imgicon)  
+	#	self.mainwin.iconbitmap(scriptdir+'icon.png')
+	
 		if not self.online:
 			self.b_updatecheck.config(state="disabled")
+			self.b_install.config(state="disabled")
 			self.b_rec = tkinter.Button(self.mainwin, text="Reconnect", command=reconnect)
 			self.b_rec.grid(row=0, column=5)
 			self.infolab.config(text="No internet connection was found.\nMerry will run in offline mode. (No update checking.)")
-		self.b_listall = tkinter.Button(self.mainwin, text="Show installed modules", command=ubi)
-		self.b_install = tkinter.Button(self.mainwin, text="Install...", command=install)
-		self.b_uninstall = tkinter.Button(self.mainwin, text="Uninstall", command=uninstall, state="disabled")
-		self.b_update = tkinter.Button(self.mainwin, text="Update", command=update, state="disabled")
-		self.b_updatecheck.grid(column=4, row=0)
-		self.b_listall.grid(column=4, row=1)
-		self.b_install.grid(column=4, row=2)
-		self.b_uninstall.grid(column=4, row=3)
-		self.b_update.grid(column=4, row=4)
-		self.mainwin.title("Merry (pip GUI)")
-		
+			
 		if self.update_check_on_start and self.online:
 			get_updates(self)
 			
