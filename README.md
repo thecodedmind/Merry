@@ -24,6 +24,10 @@ The GUI looks like it hangs when its doing the updating/background stuff, everyt
 # Planned features
 Adding more pip commands support.
 
+Version Pinning/Locking.
+
+Installing from Git support. (Unsure if this works at all, it might already)
+
 Icons!
 
 Fancier GUI.
