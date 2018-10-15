@@ -6,7 +6,10 @@ from functools import partial
 import tkinter.messagebox
 import socket
 import os
-
+"""
+Add close button to reports
+pip3 download support
+"""
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
 fmod = {}
@@ -137,8 +140,10 @@ setuptools 39.2.0    40.2.0    wheel
 		print(data)
 		host.b_update.config(state="normal")
 		host.b_uninstall.config(state="normal")
+		tkinter.messagebox.showinfo(title="Result", message=f"{len(data)} updates found!")
 	else:
 		merrygui.infolab.config(text="No updates found!")
+		tkinter.messagebox.showinfo(title="Result", message=f"No updates found!")
 	
 def getConfig():
 	with open("config.json") as f:
@@ -174,18 +179,34 @@ def install_module(module):
 	output = str(res.stdout,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
 	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output)
+	lb = tkinter.Label(r, text=output, justify="left")
 	lb.grid()
 	r.title("Result")
-	r.mainloop
+	r.mainloop()
+
+def search_module(module):
+	print("will search "+module.get())
 	
+	res = subprocess.run([merrygui.pip, "search", module.get()], stdout=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	#tkinter.messagebox.showinfo(title="Result", message=output)
+	r = tkinter.Tk()
+	lb = tkinter.Label(r, text=output, justify="left")
+	lb.grid()
+	r.title("Result")
+	r.mainloop()
+	
+		
 def install():
 	w = tkinter.Tk()
 	en = tkinter.Entry(w)
 	run_inst = partial(install_module, en)
+	run_srch = partial(search_module, en)
 	b = tkinter.Button(w, text="Install", command=run_inst, cursor="hand1")
-	en.grid()
+	sr = tkinter.Button(w, text="Search", command=run_srch, cursor="hand1")
+	en.grid(columnspan=2)
 	b.grid(row=1)
+	sr.grid(row=1, column=1)
 	w.title("Installer")
 	w.mainloop()
 	
@@ -200,7 +221,7 @@ def uninstall():
 		lb = tkinter.Label(r, text=output)
 		lb.grid()
 		r.title("Result")
-		r.mainloop
+		r.mainloop()
 		
 def update():
 	mod = merrygui.modules.curselection()[0]
@@ -214,14 +235,17 @@ def update():
 		output = str(res.stdout,"latin-1")
 		merrygui.modules.delete(mod-1)
 		r = tkinter.Tk()
-		lb = tkinter.Label(r, text=output)
+		lb = tkinter.Label(r, text=output, justify="left")
 		lb.grid()
 		r.title("Result")
 		r.mainloop
 		
 def onselect(evt):
 	w = evt.widget
-	index = int(w.curselection()[0])
+	try:
+		index = int(w.curselection()[0])
+	except IndexError:
+		return
 	index += 1
 	# value = w.get(index)
 	try:
@@ -239,6 +263,30 @@ def reconnect():
 	else:
 		tkinter.messagebox.showerror(title="No network connection", message="No internet connection was found.\nMerry will run in offline mode. (No update checking.)")	
 
+def pipcheck():
+	res = subprocess.run([merrygui.pip, "check"], stdout=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")	
+	r = tkinter.Tk()
+	lb = tkinter.Label(r, text=output)
+	lb.grid()
+	r.title("Result")
+	r.mainloop()
+	
+def pipshow():
+	try:
+		mod = merrygui.modules.curselection()[0]
+	except IndexError:
+		tkinter.messagebox.showerror(title="Error", message="No package selected.")
+		return
+	mod += 1
+	res = subprocess.run([merrygui.pip, "show", fmod[mod][0]], stdout=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	r = tkinter.Tk()
+	lb = tkinter.Label(r, text=output, justify="left")
+	lb.grid()
+	r.title("Result")
+	r.mainloop()
+		
 def about():
 	tkinter.messagebox.showinfo(title="About Merry", message="Merry is a pip GUI interface written by Kaiser.\nSource is available at https://github.com/Kaiz0r/Merry")
 	
@@ -289,6 +337,8 @@ class pipGuiMan:
 		self.filemenu = tkinter.Menu(self.mainwin)
 		self.menu.add_cascade(label="Merry", menu=self.filemenu)
 		self.filemenu.add_command(label="About", command=about)
+		self.filemenu.add_command(label="Check Libraries integrity", command=pipcheck)
+		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
 		
