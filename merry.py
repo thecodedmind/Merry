@@ -9,6 +9,14 @@ import os
 """
 Add close button to reports
 pip3 download support
+support for Installing from file?
+
+See if theres an event in text boxes for "typing"? - For the install window
+Idea: every time a character is typed or deleted, check len of the entry box get(), if 0 then disable the buttons, else enable
+
+Experiment with moving the actual querying in to a seperate class, see if it still hangs the entire UI
+
+do the internet check when attempting to click Update, Install and Check for Updates
 """
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
@@ -170,6 +178,10 @@ def boolinate(string):
 		return string
 
 def install_module(module):
+	if len(module.get()) == 0:
+		tkinter.messagebox.showerror(message="Enter text first!")
+		return
+		
 	print("will install "+module.get())
 	
 	if merrygui.usermode:
@@ -185,6 +197,9 @@ def install_module(module):
 	r.mainloop()
 
 def search_module(module):
+	if len(module.get()) == 0:
+		tkinter.messagebox.showerror(message="Enter text first!")
+		return
 	print("will search "+module.get())
 	
 	res = subprocess.run([merrygui.pip, "search", module.get()], stdout=subprocess.PIPE)
