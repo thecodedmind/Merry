@@ -244,7 +244,7 @@ def about():
 	
 class pipGuiMan:
 	def __init__(self):
-		self.online = False#internet()
+		self.online = internet()
 		self.config = getConfig()
 		self.pip = self.config['pip_command']
 		self.update_check_on_start = boolinate(self.config['auto_update_check'])
