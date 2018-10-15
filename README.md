@@ -28,6 +28,8 @@ Version Pinning/Locking.
 
 Installing from Git support. (Unsure if this works at all, it might already)
 
+Multi-selecting modules in the listbox.
+
 Icons!
 
 Fancier GUI.
