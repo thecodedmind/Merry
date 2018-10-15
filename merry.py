@@ -238,27 +238,38 @@ def reconnect():
 		merrygui.infolab.config(text="Reconnected to network!")
 	else:
 		tkinter.messagebox.showerror(title="No network connection", message="No internet connection was found.\nMerry will run in offline mode. (No update checking.)")	
-			
+
+def about():
+	tkinter.messagebox.showinfo(title="About Merry", message="Merry is a pip GUI interface written by Kaiser.\nSource is available at https://github.com/Kaiz0r/Merry")
+	
 class pipGuiMan:
 	def __init__(self):
-		self.online = internet()
+		self.online = False#internet()
 		self.config = getConfig()
 		self.pip = self.config['pip_command']
 		self.update_check_on_start = boolinate(self.config['auto_update_check'])
 		self.usermode = boolinate(self.config['add_user_flag'])
 		self.mainwin = tkinter.Tk()
-		self.modules = tkinter.Listbox(self.mainwin)
-		self.modules.grid(rowspan=5, columnspan=4)
+		self.modules = tkinter.Listbox(self.mainwin, height=15)
+		
+		self.modules.grid(rowspan=6, columnspan=4)
+
 		self.modules.bind('<<ListboxSelect>>', onselect)
 		ub = partial(get_updates, self)
 		ubi = partial(get_modules, self)
 		self.infolab = tkinter.Label(self.mainwin, text="Selected info will appear here.")
 		self.infolab.grid(row=6, columnspan=6)
-		self.b_updatecheck = tkinter.Button(self.mainwin, text="Check for updates", command=ub, cursor="hand1")
-		self.b_listall = tkinter.Button(self.mainwin, text="Show installed modules", command=ubi, cursor="hand1")
-		self.b_install = tkinter.Button(self.mainwin, text="Install...", command=install, cursor="hand1")
-		self.b_uninstall = tkinter.Button(self.mainwin, text="Uninstall", command=uninstall, state="disabled", cursor="hand1")
-		self.b_update = tkinter.Button(self.mainwin, text="Update", command=update, state="disabled", cursor="hand1")
+		self.chicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'py.png'))
+		self.listicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'list.png'))
+		self.dlicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'dl.png'))
+		self.unicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'uni.png'))
+		self.upicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'upg.png'))
+		self.b_updatecheck = tkinter.Button(self.mainwin, image=self.chicon, compound="left", text="Check for updates", command=ub, cursor="hand1", width=150, anchor="w")
+		self.b_listall = tkinter.Button(self.mainwin, text="Show list", image=self.listicon, compound="left", command=ubi, cursor="hand1", width=150, anchor="w")
+		self.b_install = tkinter.Button(self.mainwin, image=self.dlicon, compound="left", text="Install...", command=install, cursor="hand1", width=150, anchor="w")
+		self.b_uninstall = tkinter.Button(self.mainwin, image=self.unicon, compound="left", text="Uninstall", command=uninstall, state="disabled", cursor="hand1", width=150, anchor="w")
+		self.b_update = tkinter.Button(self.mainwin, image=self.upicon, compound="left", text="Update", command=update, state="disabled", cursor="hand1", width=150, anchor="w")
+		
 		self.b_updatecheck.grid(column=4, row=0)
 		CreateToolTip(self.b_updatecheck, "Gets outdated modules list.\nNOTE: Will take a few moments.")
 		self.b_listall.grid(column=4, row=1)
@@ -269,16 +280,25 @@ class pipGuiMan:
 		CreateToolTip(self.b_uninstall, "Completely uninstalls the module selected in the list.")
 		self.b_update.grid(column=4, row=4)
 		CreateToolTip(self.b_update, "Updates the selected module in the list.")
-		self.mainwin.title("Merry (pip GUI)")
+		self.mainwin.title("Merry")
 		imgicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'icon.png'))
 		self.mainwin.tk.call('wm', 'iconphoto', self.mainwin, imgicon)  
-	#	self.mainwin.iconbitmap(scriptdir+'icon.png')
-	
+		self.menu = tkinter.Menu(self.mainwin)
+		self.mainwin.config(menu=self.menu)
+
+		self.filemenu = tkinter.Menu(self.mainwin)
+		self.menu.add_cascade(label="Merry", menu=self.filemenu)
+		self.filemenu.add_command(label="About", command=about)
+		self.filemenu.add_separator()
+		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
+		
 		if not self.online:
 			self.b_updatecheck.config(state="disabled")
 			self.b_install.config(state="disabled")
-			self.b_rec = tkinter.Button(self.mainwin, text="Reconnect", command=reconnect)
+			self.bicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'reset.png'))
+			self.b_rec = tkinter.Button(self.mainwin, image=self.bicon, command=reconnect)
 			self.b_rec.grid(row=0, column=5)
+			CreateToolTip(self.b_rec, "Reconnect to network.")
 			self.infolab.config(text="No internet connection was found.\nMerry will run in offline mode. (No update checking.)")
 			
 		if self.update_check_on_start and self.online:
