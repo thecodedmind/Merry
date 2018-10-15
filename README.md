@@ -24,6 +24,8 @@ The GUI looks like it hangs when its doing the updating/background stuff, everyt
 # Planned features
 Adding more pip commands support.
 
+Icons!
+
 Fancier GUI.
 
 Virtualenv support. (Currently this works if you run the GUI while sourced in to a virtualenv already)
