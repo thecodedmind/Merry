@@ -6,6 +6,8 @@ from functools import partial
 import tkinter.messagebox
 import socket
 import os
+import asyncio
+
 """
 Add close button to reports
 pip3 download support
@@ -18,11 +20,13 @@ Experiment with moving the actual querying in to a seperate class, see if it sti
 
 do the internet check when attempting to click Update, Install and Check for Updates
 maybe try doing some async shinanigens
+
+replace the method of displaying outputs from labels to a textbox
 """
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
 fmod = {}
-
+checkbox_force_reinstall = 0
 class CreateToolTip(object):
     """
     create a tooltip for a given widget
@@ -191,30 +195,54 @@ def install_moduletext(module):
 		res = subprocess.run([merrygui.pip, "install", module], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
-	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output, justify="left")
-	lb.grid()
-	r.title("Result")
-	r.mainloop()
+	#r = tkinter.Tk()
+	#lb = tkinter.Label(r, text=output, justify="left")
+	#lb.grid()
+	master = tkinter.Tk()
+
+	S = tkinter.Scrollbar(master)
+	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	T.insert('1.0',output)
+	master.title("Result")
+	master.mainloop()
 	
 def install_module(module):
 	if len(module.get()) == 0:
 		tkinter.messagebox.showerror(message="Enter text first!")
 		return
-		
+	
+	print(checkbox_force_reinstall)	
 	print("will install "+module.get())
-
+	coms = [merrygui.pip, 'install']
 	if merrygui.usermode:
-		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE)
-	else:
-		res = subprocess.run([merrygui.pip, "install", module.get()], stdout=subprocess.PIPE)
+		coms.append("--user")
+	if checkbox_force_reinstall:
+		coms.append("--force-reinstall")
+	coms.append(module.get())
+	print(coms)
+	
+	res = subprocess.run(coms, stdout=subprocess.PIPE)
+
 	output = str(res.stdout,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
-	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output, justify="left")
-	lb.grid()
-	r.title("Result")
-	r.mainloop()
+	#r = tkinter.Tk()
+	#lb = tkinter.Label(r, text=output, justify="left")
+	#lb.grid()
+	master = tkinter.Tk()
+
+	S = tkinter.Scrollbar(master)
+	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	T.insert('1.0',output)
+	master.title("Result")
+	master.mainloop()
 
 def search_module(module):
 	if len(module.get()) == 0:
@@ -239,27 +267,40 @@ def search_module(module):
 	i = 0
 	while i < len(fout):
 		ins = partial(install_moduletext, fout[i])
-		lbut = tkinter.Button(r, text=fout[i]+" "+fvers[i], command=ins)
-		lb = tkinter.Label(r, text=fdesc[i], justify="left")
+		lbut = tkinter.Button(r, text=fout[i]+" "+fvers[i], command=ins, width=20)
+		lb = tkinter.Label(r, text=fdesc[i].strip(), justify="left")
 		lb.grid(row=i, column=1)
 		lbut.grid(row=i)
 		
 		i += 1
+		if i > 5:
+			break
 		
 	r.title(f"{len(fout)} results")
 	r.mainloop()
-	
+
+def checkbox_force_reinstall_toggle():
+	global checkbox_force_reinstall
+	if checkbox_force_reinstall == 0:
+		checkbox_force_reinstall = 1
+	else:
+		checkbox_force_reinstall = 0
 		
 def install():
+	
+	
 	w = tkinter.Tk()
 	en = tkinter.Entry(w)
 	run_inst = partial(install_module, en)
 	run_srch = partial(search_module, en)
 	b = tkinter.Button(w, text="Install", command=run_inst, cursor="hand1")
 	sr = tkinter.Button(w, text="Search", command=run_srch, cursor="hand1")
+	chk = tkinter.Checkbutton(w, text="Force Reinstall", command=checkbox_force_reinstall_toggle)
+	
 	en.grid(columnspan=2)
 	b.grid(row=1)
 	sr.grid(row=1, column=1)
+	chk.grid(row=2, column=0, columnspan=2)
 	w.title("Installer")
 	w.mainloop()
 	
@@ -270,12 +311,21 @@ def uninstall():
 		res = subprocess.run([merrygui.pip, "uninstall", "-y", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
 		merrygui.modules.delete(mod-1)
-		r = tkinter.Tk()
-		lb = tkinter.Label(r, text=output)
-		lb.grid()
-		r.title("Result")
-		r.mainloop()
-		
+		#r = tkinter.Tk()
+		#lb = tkinter.Label(r, text=output, justify="left")
+		#lb.grid()
+		master = tkinter.Tk()
+
+		S = tkinter.Scrollbar(master)
+		S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+		T = tkinter.Text(master, height=20, width=70)
+		T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+		S.config(command=T.yview)
+		T.config(yscrollcommand=S.set)	
+		T.insert('1.0',output)
+		master.title("Result")
+		master.mainloop()
+	
 def update():
 	mod = merrygui.modules.curselection()[0]
 	mod += 1
@@ -287,11 +337,20 @@ def update():
 			res = subprocess.run([merrygui.pip, "install", "--upgrade", "--user", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
 		merrygui.modules.delete(mod-1)
-		r = tkinter.Tk()
-		lb = tkinter.Label(r, text=output, justify="left")
-		lb.grid()
-		r.title("Result")
-		r.mainloop
+		#r = tkinter.Tk()
+		#lb = tkinter.Label(r, text=output, justify="left")
+		#lb.grid()
+		master = tkinter.Tk()
+
+		S = tkinter.Scrollbar(master)
+		S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+		T = tkinter.Text(master, height=20, width=70)
+		T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+		S.config(command=T.yview)
+		T.config(yscrollcommand=S.set)	
+		T.insert('1.0',output)
+		master.title("Result")
+		master.mainloop()
 		
 def onselect(evt):
 	w = evt.widget
@@ -319,11 +378,20 @@ def reconnect():
 def pipcheck():
 	res = subprocess.run([merrygui.pip, "check"], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")	
-	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output)
-	lb.grid()
-	r.title("Result")
-	r.mainloop()
+	#r = tkinter.Tk()
+	#lb = tkinter.Label(r, text=output, justify="left")
+	#lb.grid()
+	master = tkinter.Tk()
+
+	S = tkinter.Scrollbar(master)
+	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	T.insert('1.0',output)
+	master.title("Result")
+	master.mainloop()
 	
 def pipshow():
 	try:
@@ -334,11 +402,20 @@ def pipshow():
 	mod += 1
 	res = subprocess.run([merrygui.pip, "show", fmod[mod][0]], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
-	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output, justify="left")
-	lb.grid()
-	r.title("Result")
-	r.mainloop()
+	#r = tkinter.Tk()
+	#lb = tkinter.Label(r, text=output, justify="left")
+	#lb.grid()
+	master = tkinter.Tk()
+
+	S = tkinter.Scrollbar(master)
+	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	T.insert('1.0',output)
+	master.title("Result")
+	master.mainloop()
 
 def piprein():
 	if not merrygui.online:
@@ -353,11 +430,20 @@ def piprein():
 	mod += 1
 	res = subprocess.run([merrygui.pip, "install", "--force-reinstall", fmod[mod][0]], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
-	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output, justify="left")
-	lb.grid()
-	r.title("Result")
-	r.mainloop()
+	#r = tkinter.Tk()
+	#lb = tkinter.Label(r, text=output, justify="left")
+	#lb.grid()
+	master = tkinter.Tk()
+
+	S = tkinter.Scrollbar(master)
+	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	T.insert('1.0',output)
+	master.title("Result")
+	master.mainloop()
 		
 def about():
 	tkinter.messagebox.showinfo(title="About Merry", message="Merry is a pip GUI interface written by Kaiser.\nSource is available at https://github.com/Kaiz0r/Merry")
@@ -371,9 +457,11 @@ class pipGuiMan:
 		self.usermode = boolinate(self.config['add_user_flag'])
 		self.mainwin = tkinter.Tk()
 		self.modules = tkinter.Listbox(self.mainwin, height=15)
-		
 		self.modules.grid(rowspan=6, columnspan=4)
-
+		self.modules_scroll = tkinter.Scrollbar(self.mainwin)
+		self.modules_scroll.grid(column=4, row=0, rowspan=5, sticky="ns")
+		self.modules_scroll.config(command=self.modules.yview)
+		self.modules.config(yscrollcommand=self.modules_scroll.set)	
 		self.modules.bind('<<ListboxSelect>>', onselect)
 		ub = partial(get_updates, self)
 		ubi = partial(get_modules, self)
@@ -390,15 +478,15 @@ class pipGuiMan:
 		self.b_uninstall = tkinter.Button(self.mainwin, image=self.unicon, compound="left", text="Uninstall", command=uninstall, state="disabled", cursor="hand1", width=150, anchor="w")
 		self.b_update = tkinter.Button(self.mainwin, image=self.upicon, compound="left", text="Update", command=update, state="disabled", cursor="hand1", width=150, anchor="w")
 		
-		self.b_updatecheck.grid(column=4, row=0)
+		self.b_updatecheck.grid(column=5, row=0)
 		CreateToolTip(self.b_updatecheck, "Gets outdated modules list.\nNOTE: Will take a few moments.")
-		self.b_listall.grid(column=4, row=1)
+		self.b_listall.grid(column=5, row=1)
 		CreateToolTip(self.b_listall, "Gets installed modules list.\nNOTE: Will take a few moments.")
-		self.b_install.grid(column=4, row=2)
+		self.b_install.grid(column=5, row=2)
 		CreateToolTip(self.b_install, "Opens the Installer window. Enter a module name to download and install using pip.")
-		self.b_uninstall.grid(column=4, row=3)
+		self.b_uninstall.grid(column=5, row=3)
 		CreateToolTip(self.b_uninstall, "Completely uninstalls the module selected in the list.")
-		self.b_update.grid(column=4, row=4)
+		self.b_update.grid(column=5, row=4)
 		CreateToolTip(self.b_update, "Updates the selected module in the list.")
 		self.mainwin.title("Merry")
 		imgicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'icon.png'))
