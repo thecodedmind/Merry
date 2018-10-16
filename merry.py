@@ -17,6 +17,7 @@ Idea: every time a character is typed or deleted, check len of the entry box get
 Experiment with moving the actual querying in to a seperate class, see if it still hangs the entire UI
 
 do the internet check when attempting to click Update, Install and Check for Updates
+maybe try doing some async shinanigens
 """
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
@@ -177,13 +178,32 @@ def boolinate(string):
 	except:
 		return string
 
+def install_moduletext(module):
+	if len(module) == 0:
+		tkinter.messagebox.showerror(message="Enter text first!")
+		return
+		
+	print("will install "+module)
+
+	if merrygui.usermode:
+		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE)
+	else:
+		res = subprocess.run([merrygui.pip, "install", module], stdout=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	#tkinter.messagebox.showinfo(title="Result", message=output)
+	r = tkinter.Tk()
+	lb = tkinter.Label(r, text=output, justify="left")
+	lb.grid()
+	r.title("Result")
+	r.mainloop()
+	
 def install_module(module):
 	if len(module.get()) == 0:
 		tkinter.messagebox.showerror(message="Enter text first!")
 		return
 		
 	print("will install "+module.get())
-	
+
 	if merrygui.usermode:
 		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE)
 	else:
@@ -205,10 +225,28 @@ def search_module(module):
 	res = subprocess.run([merrygui.pip, "search", module.get()], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
+	outs = output.split("\n")
+	fout = []
+	fvers = []
+	fdesc = []
+	for item in outs:
+		if item != "" and "INSTALLED: " not in item and "LATEST: " not in item:
+			fout.append(item.split(" ")[0])
+			fvers.append(item.split(" ")[1])
+			fdesc.append(' '.join(item.split(" ")[2:]))
+			
 	r = tkinter.Tk()
-	lb = tkinter.Label(r, text=output, justify="left")
-	lb.grid()
-	r.title("Result")
+	i = 0
+	while i < len(fout):
+		ins = partial(install_moduletext, fout[i])
+		lbut = tkinter.Button(r, text=fout[i]+" "+fvers[i], command=ins)
+		lb = tkinter.Label(r, text=fdesc[i], justify="left")
+		lb.grid(row=i, column=1)
+		lbut.grid(row=i)
+		
+		i += 1
+		
+	r.title(f"{len(fout)} results")
 	r.mainloop()
 	
 		
