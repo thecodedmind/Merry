@@ -339,6 +339,25 @@ def pipshow():
 	lb.grid()
 	r.title("Result")
 	r.mainloop()
+
+def piprein():
+	if not merrygui.online:
+		tkinter.messagebox.showerror("Network connection not found!")
+		return
+		
+	try:
+		mod = merrygui.modules.curselection()[0]
+	except IndexError:
+		tkinter.messagebox.showerror(title="Error", message="No package selected.")
+		return
+	mod += 1
+	res = subprocess.run([merrygui.pip, "install", "--force-reinstall", fmod[mod][0]], stdout=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	r = tkinter.Tk()
+	lb = tkinter.Label(r, text=output, justify="left")
+	lb.grid()
+	r.title("Result")
+	r.mainloop()
 		
 def about():
 	tkinter.messagebox.showinfo(title="About Merry", message="Merry is a pip GUI interface written by Kaiser.\nSource is available at https://github.com/Kaiz0r/Merry")
@@ -392,6 +411,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="About", command=about)
 		self.filemenu.add_command(label="Check Libraries integrity", command=pipcheck)
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
+		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
 		
