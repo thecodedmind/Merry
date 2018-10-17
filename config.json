@@ -1,5 +1,6 @@
 {
 	"pip_command":"pip3",
 	"auto_update_check": "false",
-	"add_user_flag": "false"
+	"add_user_flag": "false",
+	"output_win_size":"640x180"
 }

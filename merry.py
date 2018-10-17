@@ -7,6 +7,7 @@ import tkinter.messagebox
 import socket
 import os
 import asyncio
+import webbrowser
 
 """
 Add close button to reports
@@ -27,6 +28,7 @@ scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
 fmod = {}
 checkbox_force_reinstall = 0
+checkbox_full_search = 0
 class CreateToolTip(object):
     """
     create a tooltip for a given widget
@@ -92,6 +94,23 @@ def internet(host="8.8.8.8", port=53, timeout=3):
 		print( ex)
 		return False
 
+def running_net_check():
+	if not internet():
+		print("Network test failed.")
+		merrygui.offline = False
+		merrygui.b_updatecheck.config(state="disabled")
+		merrygui.b_install.config(state="disabled")
+		merrygui.bicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'reset.png'))
+		merrygui.b_rec = tkinter.Button(self.mainwin, image=self.bicon, command=reconnect)
+		merrygui.b_rec.grid(row=0, column=5)
+		CreateToolTip(merrygui.b_rec, "Reconnect to network.")
+		merrygui.infolab.config(text="No internet connection was found.\nMerry will run in offline mode. (No update checking.)")
+		tkinter.messagebox.showerror(message="Internet connection was lost...")
+		return False
+	else:
+		print("Network test passed.")
+		return True
+			
 def build_package_dict(output):
 	global fmod
 	lines = output.split("\n")
@@ -125,11 +144,14 @@ setuptools 39.2.0
 		output = str(res.stdout,"latin-1")
 	data = build_package_dict(output)
 	host.modules.delete(0, tkinter.END)
+	i = 0
 	for item in data:
 		host.modules.insert(tkinter.END, data[item][0])
+		i += 1
 	print(data)
 	host.b_update.config(state="disabled")
 	host.b_uninstall.config(state="normal")
+	merrygui.infolab.config(text=f"{i} modules found.")
 	
 def get_updates(host):
 	debug = False
@@ -154,6 +176,7 @@ setuptools 39.2.0    40.2.0    wheel
 		host.b_update.config(state="normal")
 		host.b_uninstall.config(state="normal")
 		tkinter.messagebox.showinfo(title="Result", message=f"{len(data)} updates found!")
+		merrygui.infolab.config(text=f"{len(data)} updates found!")
 	else:
 		merrygui.infolab.config(text="No updates found!")
 		tkinter.messagebox.showinfo(title="Result", message=f"No updates found!")
@@ -183,6 +206,9 @@ def boolinate(string):
 		return string
 
 def install_moduletext(module):
+	if not running_net_check():
+		return
+			
 	if len(module) == 0:
 		tkinter.messagebox.showerror(message="Enter text first!")
 		return
@@ -198,12 +224,14 @@ def install_moduletext(module):
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
-	master = tkinter.Tk()
 
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
 	S = tkinter.Scrollbar(master)
-	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 	T = tkinter.Text(master, height=20, width=70)
-	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 	S.config(command=T.yview)
 	T.config(yscrollcommand=S.set)	
 	T.insert('1.0',output)
@@ -211,12 +239,18 @@ def install_moduletext(module):
 	master.mainloop()
 	
 def install_module(module):
+	if not running_net_check():
+		return
+		
 	if len(module.get()) == 0:
 		tkinter.messagebox.showerror(message="Enter text first!")
 		return
 	
 	print(checkbox_force_reinstall)	
 	print("will install "+module.get())
+	if not tkinter.messagebox.askokcancel(message=f"Install {module.get()}"):
+		return
+		
 	coms = [merrygui.pip, 'install']
 	if merrygui.usermode:
 		coms.append("--user")
@@ -232,12 +266,14 @@ def install_module(module):
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
-	master = tkinter.Tk()
 
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
 	S = tkinter.Scrollbar(master)
-	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 	T = tkinter.Text(master, height=20, width=70)
-	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 	S.config(command=T.yview)
 	T.config(yscrollcommand=S.set)	
 	T.insert('1.0',output)
@@ -245,6 +281,8 @@ def install_module(module):
 	master.mainloop()
 
 def search_module(module):
+	if not running_net_check():
+		return
 	if len(module.get()) == 0:
 		tkinter.messagebox.showerror(message="Enter text first!")
 		return
@@ -252,6 +290,22 @@ def search_module(module):
 	
 	res = subprocess.run([merrygui.pip, "search", module.get()], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
+	
+	if checkbox_full_search:
+		master = tkinter.Tk()
+		master.geometry(merrygui.win_size)
+		S = tkinter.Scrollbar(master)
+		
+		S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
+		T = tkinter.Text(master, height=20, width=70)
+		T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
+		S.config(command=T.yview)
+		T.config(yscrollcommand=S.set)	
+		T.insert('1.0',output)
+		master.title("Result")
+		master.mainloop()
+		return
+		
 	#tkinter.messagebox.showinfo(title="Result", message=output)
 	outs = output.split("\n")
 	fout = []
@@ -286,21 +340,38 @@ def checkbox_force_reinstall_toggle():
 	else:
 		checkbox_force_reinstall = 0
 		
+def checkbox_full_search_toggle():
+	global checkbox_full_search
+	if checkbox_full_search == 0:
+		checkbox_full_search = 1
+	else:
+		checkbox_full_search = 0	
+
+def about_installer():
+	tkinter.messagebox.showinfo(message="Enter a module name in to the box first.\nPressing INSTALL will directly install the module with that name through pip.\nIf you toggle 'force reinstall' on, it will force reinstall the module.\nPressing Search will display the top results of modules using the input as a search term.\nBy default it will show the top 6 results. Press the name button to install the module.\nToggling on Show FULL search will show EVERY result.")
+	
 def install():
-	
-	
+	if not running_net_check():
+		return
+		
 	w = tkinter.Tk()
-	en = tkinter.Entry(w)
+	
+	en = tkinter.Entry(w, width=20)
 	run_inst = partial(install_module, en)
 	run_srch = partial(search_module, en)
 	b = tkinter.Button(w, text="Install", command=run_inst, cursor="hand1")
 	sr = tkinter.Button(w, text="Search", command=run_srch, cursor="hand1")
 	chk = tkinter.Checkbutton(w, text="Force Reinstall", command=checkbox_force_reinstall_toggle)
-	
-	en.grid(columnspan=2)
+	chk2 = tkinter.Checkbutton(w, text="Show FULL search", command=checkbox_full_search_toggle)
+	lab = tkinter.Button(w, text="?", command=about_installer)
+	en.grid(columnspan=3)
 	b.grid(row=1)
 	sr.grid(row=1, column=1)
-	chk.grid(row=2, column=0, columnspan=2)
+	lab.grid(row=1, column=2)
+	
+	chk.grid(row=2, column=0, columnspan=3)
+	chk2.grid(row=3, column=0, columnspan=3)
+	
 	w.title("Installer")
 	w.mainloop()
 	
@@ -314,19 +385,25 @@ def uninstall():
 		#r = tkinter.Tk()
 		#lb = tkinter.Label(r, text=output, justify="left")
 		#lb.grid()
-		master = tkinter.Tk()
 
+		master = tkinter.Tk()
+		master.geometry(merrygui.win_size)
 		S = tkinter.Scrollbar(master)
-		S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+		
+		S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 		T = tkinter.Text(master, height=20, width=70)
-		T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+		T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 		S.config(command=T.yview)
 		T.config(yscrollcommand=S.set)	
 		T.insert('1.0',output)
 		master.title("Result")
 		master.mainloop()
+
 	
 def update():
+	if not running_net_check():
+		return
+		
 	mod = merrygui.modules.curselection()[0]
 	mod += 1
 	print(fmod[mod][0])
@@ -340,17 +417,20 @@ def update():
 		#r = tkinter.Tk()
 		#lb = tkinter.Label(r, text=output, justify="left")
 		#lb.grid()
-		master = tkinter.Tk()
 
+		master = tkinter.Tk()
+		master.geometry(merrygui.win_size)
 		S = tkinter.Scrollbar(master)
-		S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+		
+		S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 		T = tkinter.Text(master, height=20, width=70)
-		T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+		T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 		S.config(command=T.yview)
 		T.config(yscrollcommand=S.set)	
 		T.insert('1.0',output)
 		master.title("Result")
 		master.mainloop()
+
 		
 def onselect(evt):
 	w = evt.widget
@@ -381,17 +461,20 @@ def pipcheck():
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
-	master = tkinter.Tk()
 
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
 	S = tkinter.Scrollbar(master)
-	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 	T = tkinter.Text(master, height=20, width=70)
-	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 	S.config(command=T.yview)
 	T.config(yscrollcommand=S.set)	
 	T.insert('1.0',output)
 	master.title("Result")
 	master.mainloop()
+
 	
 def pipshow():
 	try:
@@ -405,17 +488,20 @@ def pipshow():
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
-	master = tkinter.Tk()
 
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
 	S = tkinter.Scrollbar(master)
-	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 	T = tkinter.Text(master, height=20, width=70)
-	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 	S.config(command=T.yview)
 	T.config(yscrollcommand=S.set)	
 	T.insert('1.0',output)
 	master.title("Result")
 	master.mainloop()
+
 
 def piprein():
 	if not merrygui.online:
@@ -433,20 +519,31 @@ def piprein():
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
-	master = tkinter.Tk()
 
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
 	S = tkinter.Scrollbar(master)
-	S.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
 	T = tkinter.Text(master, height=20, width=70)
-	T.pack(side=tkinter.LEFT, fill=tkinter.Y)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 	S.config(command=T.yview)
 	T.config(yscrollcommand=S.set)	
 	T.insert('1.0',output)
 	master.title("Result")
 	master.mainloop()
-		
+
+def opengithub(event):
+    webbrowser.open_new(r"https://github.com/Kaiz0r/Merry")
+    		
 def about():
-	tkinter.messagebox.showinfo(title="About Merry", message="Merry is a pip GUI interface written by Kaiser.\nSource is available at https://github.com/Kaiz0r/Merry")
+	w = tkinter.Tk()
+	info = tkinter.Label(w, text="Merry is a pip GUI interface written by Kaiser. Source is available at ")
+	url = tkinter.Label(w, text="https://github.com/Kaiz0r/Merry", fg="blue", cursor="hand2")
+	info.pack()
+	url.pack()
+	url.bind("<Button-1>", opengithub)
+	w.title("About")
 	
 class pipGuiMan:
 	def __init__(self):
@@ -455,6 +552,7 @@ class pipGuiMan:
 		self.pip = self.config['pip_command']
 		self.update_check_on_start = boolinate(self.config['auto_update_check'])
 		self.usermode = boolinate(self.config['add_user_flag'])
+		self.win_size = self.config['output_win_size']
 		self.mainwin = tkinter.Tk()
 		self.modules = tkinter.Listbox(self.mainwin, height=15)
 		self.modules.grid(rowspan=6, columnspan=4)
@@ -517,4 +615,4 @@ class pipGuiMan:
 			
 merrygui = pipGuiMan()	
 merrygui.mainwin.mainloop()
-print(merrygui.pip)
+print("Closing.")
