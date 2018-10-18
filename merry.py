@@ -9,6 +9,7 @@ import os
 import asyncio
 import webbrowser
 from git import Repo
+import copy
 
 """
 pip3 download support
@@ -20,9 +21,10 @@ Idea: every time a character is typed or deleted, check len of the entry box get
 
 changelog = """Update checking.
 Config windows.
-Various fixes."""
+Various fixes.
+Module ignore list."""
 
-version = "18.10.18"
+version = "18.10.18.56"
 
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
@@ -112,7 +114,15 @@ def running_net_check():
 	else:
 		print("Network test passed.")
 		return True
-			
+
+"""
+	shadow = copy.copy(data)
+	ls = getConfig()['ignores']
+	for item in shadow:
+		if shadow[item][0] in ls:
+			print(f"Deleting {item}")
+			del data[item]
+			"""		
 def build_package_dict(output):
 	global fmod
 	lines = output.split("\n")
@@ -121,13 +131,16 @@ def build_package_dict(output):
 	i = 0
 	for item in modules_outdated:
 		f = item.split(" ")
-		m = []
-		i += 1
-		for fi in f:
-			if fi:
-				m.append(fi)
-		if len(m) > 0:
-			fmod[i] = m
+		ls = getConfig()['ignores']
+		print(f[0])
+		if f[0] not in ls:
+			m = []
+			i += 1
+			for fi in f:
+				if fi:
+					m.append(fi)
+			if len(m) > 0:
+				fmod[i] = m
 	return fmod
 
 def get_modules(host):
@@ -142,8 +155,10 @@ PyQt5-sip  4.19.11
 setuptools 39.2.0
 """
 	else:
-		res = subprocess.run([host.pip, "list"], stdout=subprocess.PIPE)
+		res = subprocess.run([host.pip, "list"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 		output = str(res.stdout,"latin-1")
+		output += str(res.stderr,"latin-1")
 	data = build_package_dict(output)
 	host.modules.delete(0, tkinter.END)
 	i = 0
@@ -169,10 +184,17 @@ PyQt5-sip  4.19.11   4.19.12   wheel
 setuptools 39.2.0    40.2.0    wheel
 """
 	else:
-		res = subprocess.run([host.pip, "list", "--outdated"], stdout=subprocess.PIPE)
+		res = subprocess.run([host.pip, "list", "--outdated"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 		output = str(res.stdout,"latin-1")
+		output_err = str(res.stderr,"latin-1")
+		if len(output_err) > 0:
+			tkinter.messagebox.showerror(message=output_err)
+			return
+			
 	data = build_package_dict(output)
 	host.modules.delete(0, tkinter.END)
+	
 	if len(data) > 0:
 		for item in data:
 			host.modules.insert(tkinter.END, data[item][0])
@@ -220,10 +242,12 @@ def install_moduletext(module):
 	print("will install "+module)
 
 	if merrygui.usermode:
-		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE)
+		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	else:
-		res = subprocess.run([merrygui.pip, "install", module], stdout=subprocess.PIPE)
+		res = subprocess.run([merrygui.pip, "install", module], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 	output = str(res.stdout,"latin-1")
+	output += str(res.stderr,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
@@ -263,9 +287,10 @@ def install_module(module):
 	coms.append(module.get())
 	print(coms)
 	
-	res = subprocess.run(coms, stdout=subprocess.PIPE)
+	res = subprocess.run(coms, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 	output = str(res.stdout,"latin-1")
+	output += str(res.stderr,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
@@ -403,7 +428,6 @@ def uninstall():
 		master.title("Result")
 		master.mainloop()
 
-	
 def update():
 	if not running_net_check():
 		return
@@ -418,6 +442,10 @@ def update():
 			res = subprocess.run([merrygui.pip, "install", "--upgrade", "--user", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
 		merrygui.modules.delete(mod-1)
+		merrygui.modules.insert(mod-1, fmod[mod][0]+" (Updated)")
+		#session_updates.append(fmod[mod][0])
+		#build_package_dict(session_update)
+		#merrygui.modules.selection_set("--==UPDATED==--")
 		#r = tkinter.Tk()
 		#lb = tkinter.Label(r, text=output, justify="left")
 		#lb.grid()
@@ -514,6 +542,7 @@ def piprein():
 	except IndexError:
 		tkinter.messagebox.showerror(title="Error", message="No package selected.")
 		return
+		
 	mod += 1
 	res = subprocess.run([merrygui.pip, "install", "--force-reinstall", fmod[mod][0]], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
@@ -753,6 +782,44 @@ def changes():
 	master.title("Changes")
 	#master.mainloop()
 	T.insert('1.0',changelog)
+
+def add_ignore(modules, en):
+	if len(en.get()) == 0:
+		tkinter.messagebox.showerror(message="No module name entered.")
+		return
+		
+	ls = getConfig()['ignores']
+	modules.insert(tkinter.END, en.get())
+	ls.append(en.get())
+	setConfig("ignores", ls)
+	
+def rem_ignore(modules):
+	try:
+		mod = modules.curselection()[0]
+	except:
+		return
+	ls = getConfig()['ignores']
+	ls.remove(ls[mod])
+	setConfig("ignores", ls)
+	modules.delete(mod)
+	
+def edit_ignores():
+	ls = getConfig()['ignores']
+	w = tkinter.Tk()
+	w.title("Ignores")
+	modules = tkinter.Listbox(w, height=15)
+	en = tkinter.Entry(w)
+	addmod = partial(add_ignore, modules, en)
+	remmod = partial(rem_ignore, modules)
+	b_add = tkinter.Button(w, text="+", command=addmod)
+	b_rem = tkinter.Button(w, text="-", command=remmod)
+	
+	modules.grid(columnspan=2)
+	b_add.grid(column=0, row=1)
+	b_rem.grid(column=1, row=1)
+	en.grid(columnspan=2, row=2)
+	for item in ls:
+		modules.insert(tkinter.END, item)
 	
 class pipGuiMan:
 	def __init__(self):
@@ -807,6 +874,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Check Libraries integrity", command=pipcheck)
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
+		self.filemenu.add_command(label="Edit Ignored modules", command=edit_ignores)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Open config...", command=open_config_win)
 		self.filemenu.add_command(label="Check for updates", command=self_update)

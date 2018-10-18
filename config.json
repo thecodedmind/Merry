@@ -1,8 +1,9 @@
 {
     "add_user_flag": "false",
     "auto_update_check": "false",
-    "auto_update_check_self": "true",
+    "auto_update_check_self": "false",
     "force_offline": "false",
+    "ignores": [],
     "output_win_size": "640x180",
     "pip_command": "pip3"
 }
