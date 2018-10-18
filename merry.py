@@ -11,26 +11,25 @@ import webbrowser
 from git import Repo
 
 """
-Add a config window
-
 pip3 download support
 support for Installing from file?
 
 See if theres an event in text boxes for "typing"? - For the install window
 Idea: every time a character is typed or deleted, check len of the entry box get(), if 0 then disable the buttons, else enable
-
-Experiment with moving the actual querying in to a seperate class, see if it still hangs the entire UI
-
-do the internet check when attempting to click Update, Install and Check for Updates
-maybe try doing some async shinanigens
-
-replace the method of displaying outputs from labels to a textbox
 """
+
+changelog = """Update checking.
+Config windows.
+Various fixes."""
+
+version = "18.10.18"
+
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
 fmod = {}
 checkbox_force_reinstall = 0
 checkbox_full_search = 0
+
 class CreateToolTip(object):
     """
     create a tooltip for a given widget
@@ -543,7 +542,15 @@ def set_launch_cfg():
 		setConfig('auto_update_check', "false")
 	else:
 		setConfig('auto_update_check', "true")
-
+		
+def set_launch_self_cfg():
+	print("launch cfg")
+	old = getConfig()['auto_update_check_self']
+	if boolinate(old):
+		setConfig('auto_update_check_self', "false")
+	else:
+		setConfig('auto_update_check_self', "true")
+		
 def set_offline_cfg():
 	print("offline cfg")
 	old = getConfig()['force_offline']
@@ -559,6 +566,7 @@ def set_user_cfg():
 		setConfig('add_user_flag', "false")
 	else:
 		setConfig('add_user_flag', "true")
+
 		
 def commit_pip_cfg(entry):
 	print(entry.get())
@@ -575,6 +583,7 @@ def open_config_win():
 	chk = tkinter.Checkbutton(w, text="Update pip modules on Launch", command=set_launch_cfg)
 	chk2 = tkinter.Checkbutton(w, text="Add --user flag to installs", command=set_user_cfg)
 	chk3 = tkinter.Checkbutton(w, text="Force offline mode", command=set_offline_cfg)
+	chk4 = tkinter.Checkbutton(w, text="Check for Merry updates on launch", command=set_launch_self_cfg)
 	en_lab = tkinter.Label(w, text="Pip command: ")
 	en = tkinter.Entry(w)
 	en2_lab = tkinter.Label(w, text="Output Window size: ")
@@ -586,12 +595,13 @@ def open_config_win():
 	chk.grid(columnspan=2, sticky="w")
 	chk2.grid(row=1, columnspan=2, sticky="w")
 	chk3.grid(row=2, columnspan=2, sticky="w")
-	en_lab.grid(row=3, column=0)
-	en2_lab.grid(row=4, column=0)
-	en.grid(row=3, column=1)
-	en2.grid(row=4, column=1)
-	en_but.grid(row=3, column=3)
-	en2_but.grid(row=4, column=3)
+	chk4.grid(row=3, columnspan=2, sticky="w")
+	en_lab.grid(row=4, column=0)
+	en2_lab.grid(row=5, column=0)
+	en.grid(row=4, column=1)
+	en2.grid(row=5, column=1)
+	en_but.grid(row=4, column=3)
+	en2_but.grid(row=5, column=3)
 	
 	if boolinate(basecfg['auto_update_check']):
 		chk.select()
@@ -599,6 +609,8 @@ def open_config_win():
 		chk2.select()
 	if boolinate(basecfg['force_offline']):
 		chk3.select()
+	if boolinate(basecfg['auto_update_check_self']):
+		chk4.select()
 	en.insert(0, basecfg['pip_command'])
 	en2.insert(0, basecfg['output_win_size'])
 	
@@ -615,15 +627,130 @@ def about():
 	w.title("About")
 
 def self_update():
+	subprocess.run(['rm', '-rf', '_tmp'])
 	subprocess.run(['mkdir', '_tmp'])
 	Repo.clone_from("https://github.com/Kaiz0r/Merry.git", scriptdir+"_tmp")
 	new_file = os.path.getsize(scriptdir+"_tmp/merry.py")
 	this_file = os.path.getsize(scriptdir+"merry.py")
 	if this_file != new_file:
-		tkinter.messagebox.showinfo(message="There is an update!")
+		w = tkinter.Tk()
+		w.title("Update")
+		lab = tkinter.Label(w, text="There is an update available from the Git source.\nPress the Update button below to auto-install the update.\nOr, you can manually download the files from GitHub.\nOr, copy the files over from the _tmp directory in this scripts directory.")
+		url = tkinter.Label(w, text="https://github.com/Kaiz0r/Merry", fg="blue", cursor="hand2")
+		lab.pack()
+		url.pack()
+		url.bind("<Button-1>", opengithub)
+		upd_cfg = partial(commit_update, True)
+		upd = tkinter.Button(w, text="Update (Save Old Config)", command=commit_update)
+		upd2 = tkinter.Button(w, text="Update All", command=upd_cfg)
+		upd.pack()
+		upd2.pack()
 	else:
-		tkinter.messagebox.showinfo(message="No updates.")
+		merrygui.infolab.config(text="Merry is up-to-date!")
+		subprocess.run(['rm', '-rf', '_tmp'])
 	#subprocess.run(['rmdir', '_tmp'])
+
+def commit_update(overwrite_cfg=False):
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
+	S = tkinter.Scrollbar(master)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	
+	master.title("Updating")
+	#master.mainloop()
+	T.insert('1.0',"Starting update.\n")
+	
+	if overwrite_cfg:
+		T.insert('1.0', "cp _tmp/config.json config.json\n")
+		res = subprocess.run(['cp', '_tmp/config.json', 'config.json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		output = str(res.stdout,"latin-1")
+		output_errs = str(res.stderr,"latin-1")
+		T.insert('1.0',output)
+		T.insert('1.0',output_errs)
+	else:
+		T.insert('1.0', "Skipping config.\n")
+		
+
+	T.insert('1.0', "cp _tmp/merry.py merry.py\n")
+	res = subprocess.run(['cp', '_tmp/merry.py', 'merry.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+	
+	T.insert('1.0', "cp _tmp/dl.png dl.png\n")
+	res = subprocess.run(['cp', '_tmp/dl.png', 'dl.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+	
+	T.insert('1.0', "cp _tmp/icon.png icon.png\n")
+	res = subprocess.run(['cp', '_tmp/icon.png', 'icon.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+	
+	T.insert('1.0', "cp _tmp/list.png list.png\n")
+	res = subprocess.run(['cp', '_tmp/list.png', 'list.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+	
+	T.insert('1.0', "cp _tmp/py.png py.png\n")
+	res = subprocess.run(['cp', '_tmp/py.png', 'py.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+	
+	T.insert('1.0', "cp _tmp/reset.png reset.png\n")
+	res = subprocess.run(['cp', '_tmp/reset.png', 'reset.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+	
+	T.insert('1.0', "cp _tmp/uni.png uni.png\n")
+	res = subprocess.run(['cp', '_tmp/uni.png', 'uni.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)	
+		
+	T.insert('1.0', "cp _tmp/upg.png upg.png\n")
+	res = subprocess.run(['cp', '_tmp/upg.png', 'upg.png'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")
+	output_errs = str(res.stderr,"latin-1")
+	T.insert('1.0',output)
+	T.insert('1.0',output_errs)		
+	
+	#T.insert('1.0', "Update complete.\n")	
+	subprocess.run(['rm', '-rf', '_tmp'])
+	T.insert('1.0', "Clearing temp directory.\n")
+	T.insert('1.0', "Update complete. Restart Merry to see the changes!\n")	
+
+def changes():
+	master = tkinter.Tk()
+	master.geometry(merrygui.win_size)
+	S = tkinter.Scrollbar(master)
+	
+	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
+	T = tkinter.Text(master, height=20, width=70)
+	T.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
+	S.config(command=T.yview)
+	T.config(yscrollcommand=S.set)	
+	
+	master.title("Updating")
+	#master.mainloop()
+	T.insert('1.0',changelog)
 	
 class pipGuiMan:
 	def __init__(self):
@@ -666,7 +793,7 @@ class pipGuiMan:
 		CreateToolTip(self.b_uninstall, "Completely uninstalls the module selected in the list.")
 		self.b_update.grid(column=5, row=4)
 		CreateToolTip(self.b_update, "Updates the selected module in the list.")
-		self.mainwin.title("Merry")
+		self.mainwin.title("Merry "+version)
 		imgicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'icon.png'))
 		self.mainwin.tk.call('wm', 'iconphoto', self.mainwin, imgicon)  
 		self.menu = tkinter.Menu(self.mainwin)
@@ -680,6 +807,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
 		self.filemenu.add_command(label="Open config...", command=open_config_win)
 		self.filemenu.add_command(label="Check for updates", command=self_update)
+		self.filemenu.add_command(label="Changelog", command=changes)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
 		
@@ -694,9 +822,11 @@ class pipGuiMan:
 			
 		if self.update_check_on_start and self.online:
 			get_updates(self)
+		if boolinate(self.config['auto_update_check_self']) and self.online:
+			self_update()	
 			
 merrygui = pipGuiMan()	
 merrygui.mainwin.mainloop()
 print("Closing.")
-subprocess.run(['rm', '-rf', '_tmp'])
+
 
