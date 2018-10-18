@@ -9,7 +9,6 @@ import os
 import asyncio
 import webbrowser
 from git import Repo
-import copy
 
 """
 pip3 download support
