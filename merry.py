@@ -8,6 +8,7 @@ import socket
 import os
 import asyncio
 import webbrowser
+from git import Repo
 
 """
 Add a config window
@@ -571,7 +572,7 @@ def open_config_win():
 	w = tkinter.Tk()
 	w.title("Config")
 	basecfg = getConfig()
-	chk = tkinter.Checkbutton(w, text="Update on Launch", command=set_launch_cfg)
+	chk = tkinter.Checkbutton(w, text="Update pip modules on Launch", command=set_launch_cfg)
 	chk2 = tkinter.Checkbutton(w, text="Add --user flag to installs", command=set_user_cfg)
 	chk3 = tkinter.Checkbutton(w, text="Force offline mode", command=set_offline_cfg)
 	en_lab = tkinter.Label(w, text="Pip command: ")
@@ -612,6 +613,14 @@ def about():
 	url.pack()
 	url.bind("<Button-1>", opengithub)
 	w.title("About")
+
+def self_update():
+	subprocess.run(['mkdir', '_tmp'])
+	Repo.clone_from("https://github.com/Kaiz0r/Merry.git", scriptdir+"_tmp")
+	new_file = os.path.getsize(scriptdir+"_tmp/merry.py")
+	this_file = os.path.getsize(scriptdir+"merry.py")
+	print(f"{this_file} and {new_file}")
+	#subprocess.run(['rmdir', '_tmp'])
 	
 class pipGuiMan:
 	def __init__(self):
@@ -667,6 +676,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
 		self.filemenu.add_command(label="Open config...", command=open_config_win)
+		self.filemenu.add_command(label="Check for updates", command=self_update)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
 		
