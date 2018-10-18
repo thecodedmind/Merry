@@ -156,6 +156,8 @@ setuptools 39.2.0
 	merrygui.infolab.config(text=f"{i} modules found.")
 	
 def get_updates(host):
+	if not running_net_check():
+		return
 	debug = False
 	if debug:
 		output = """Package    Version   Latest    Type 
@@ -433,7 +435,6 @@ def update():
 		master.title("Result")
 		master.mainloop()
 
-		
 def onselect(evt):
 	w = evt.widget
 	try:
@@ -504,10 +505,8 @@ def pipshow():
 	master.title("Result")
 	master.mainloop()
 
-
 def piprein():
-	if not merrygui.online:
-		tkinter.messagebox.showerror("Network connection not found!")
+	if not running_net_check():
 		return
 		
 	try:
