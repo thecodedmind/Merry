@@ -408,9 +408,11 @@ def uninstall():
 	mod = merrygui.modules.curselection()[0]
 	mod += 1
 	if tkinter.messagebox.askokcancel(title=f"Uninstall {fmod[mod][0]}", message=f"{fmod[mod][0]} {fmod[mod][1]} will be COMPLETELY uninstalled."):
-		res = subprocess.run([merrygui.pip, "uninstall", "-y", fmod[mod][0]], stdout=subprocess.PIPE)
+		res = subprocess.run([merrygui.pip, "uninstall", "-y", fmod[mod][0]], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
+		output += str(res.stderr,"latin-1")
 		merrygui.modules.delete(mod-1)
+		merrygui.modules.insert(mod-1, fmod[mod][0]+" (Removed)")
 		#r = tkinter.Tk()
 		#lb = tkinter.Label(r, text=output, justify="left")
 		#lb.grid()
