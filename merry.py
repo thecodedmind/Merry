@@ -742,7 +742,7 @@ def commit_update(overwrite_cfg=False):
 
 def changes():
 	master = tkinter.Tk()
-	master.geometry(merrygui.win_size)
+	master.geometry("240x120")
 	S = tkinter.Scrollbar(master)
 	
 	S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
@@ -751,7 +751,7 @@ def changes():
 	S.config(command=T.yview)
 	T.config(yscrollcommand=S.set)	
 	
-	master.title("Updating")
+	master.title("Changes")
 	#master.mainloop()
 	T.insert('1.0',changelog)
 	
@@ -808,6 +808,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Check Libraries integrity", command=pipcheck)
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
+		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Open config...", command=open_config_win)
 		self.filemenu.add_command(label="Check for updates", command=self_update)
 		self.filemenu.add_command(label="Changelog", command=changes)
