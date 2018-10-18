@@ -10,7 +10,8 @@ import asyncio
 import webbrowser
 
 """
-Add close button to reports
+Add a config window
+
 pip3 download support
 support for Installing from file?
 
@@ -86,6 +87,8 @@ class CreateToolTip(object):
         return "CreateToolTip"
 	
 def internet(host="8.8.8.8", port=53, timeout=3):
+	if boolinate(getConfig()['force_offline']):
+		return False
 	try:
 		socket.setdefaulttimeout(timeout)
 		socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -100,8 +103,7 @@ def running_net_check():
 		merrygui.offline = False
 		merrygui.b_updatecheck.config(state="disabled")
 		merrygui.b_install.config(state="disabled")
-		merrygui.bicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'reset.png'))
-		merrygui.b_rec = tkinter.Button(self.mainwin, image=self.bicon, command=reconnect)
+		merrygui.b_rec = tkinter.Button(merrygui.mainwin, image=merrygui.bicon, command=reconnect)
 		merrygui.b_rec.grid(row=0, column=5)
 		CreateToolTip(merrygui.b_rec, "Reconnect to network.")
 		merrygui.infolab.config(text="No internet connection was found.\nMerry will run in offline mode. (No update checking.)")
@@ -533,6 +535,72 @@ def piprein():
 	master.title("Result")
 	master.mainloop()
 
+def set_launch_cfg():
+	print("launch cfg")
+	old = getConfig()['auto_update_check']
+	if boolinate(old):
+		setConfig('auto_update_check', "false")
+	else:
+		setConfig('auto_update_check', "true")
+
+def set_offline_cfg():
+	print("offline cfg")
+	old = getConfig()['force_offline']
+	if boolinate(old):
+		setConfig('force_offline', "false")
+	else:
+		setConfig('force_offline', "true")
+			
+def set_user_cfg():
+	print("user cfg")
+	old = getConfig()['add_user_flag']
+	if boolinate(old):
+		setConfig('add_user_flag', "false")
+	else:
+		setConfig('add_user_flag', "true")
+		
+def commit_pip_cfg(entry):
+	print(entry.get())
+	setConfig('pip_command', entry.get())
+
+def commit_output_cfg(entry):
+	print(entry.get())
+	setConfig('output_win_size', entry.get())
+	
+def open_config_win():
+	w = tkinter.Tk()
+	w.title("Config")
+	basecfg = getConfig()
+	chk = tkinter.Checkbutton(w, text="Update on Launch", command=set_launch_cfg)
+	chk2 = tkinter.Checkbutton(w, text="Add --user flag to installs", command=set_user_cfg)
+	chk3 = tkinter.Checkbutton(w, text="Force offline mode", command=set_offline_cfg)
+	en_lab = tkinter.Label(w, text="Pip command: ")
+	en = tkinter.Entry(w)
+	en2_lab = tkinter.Label(w, text="Output Window size: ")
+	en2 = tkinter.Entry(w)
+	cp = partial(commit_pip_cfg, en)
+	co = partial(commit_output_cfg, en2)
+	en_but = tkinter.Button(w, text="Save", command=cp)
+	en2_but = tkinter.Button(w, text="Save", command=co)
+	chk.grid(columnspan=2, sticky="w")
+	chk2.grid(row=1, columnspan=2, sticky="w")
+	chk3.grid(row=2, columnspan=2, sticky="w")
+	en_lab.grid(row=3, column=0)
+	en2_lab.grid(row=4, column=0)
+	en.grid(row=3, column=1)
+	en2.grid(row=4, column=1)
+	en_but.grid(row=3, column=3)
+	en2_but.grid(row=4, column=3)
+	
+	if boolinate(basecfg['auto_update_check']):
+		chk.select()
+	if boolinate(basecfg['add_user_flag']):
+		chk2.select()
+	if boolinate(basecfg['force_offline']):
+		chk3.select()
+	en.insert(0, basecfg['pip_command'])
+	en2.insert(0, basecfg['output_win_size'])
+	
 def opengithub(event):
     webbrowser.open_new(r"https://github.com/Kaiz0r/Merry")
     		
@@ -598,6 +666,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Check Libraries integrity", command=pipcheck)
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
+		self.filemenu.add_command(label="Open config...", command=open_config_win)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
 		

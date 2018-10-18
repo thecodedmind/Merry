@@ -1,6 +1,7 @@
 {
-	"pip_command":"pip3",
-	"auto_update_check": "false",
-	"add_user_flag": "false",
-	"output_win_size":"640x180"
+    "add_user_flag": "false",
+    "auto_update_check": "false",
+    "force_offline": "false",
+    "output_win_size": "640x180",
+    "pip_command": "pip3"
 }
