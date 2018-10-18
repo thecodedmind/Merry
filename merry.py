@@ -546,8 +546,14 @@ def piprein():
 		return
 		
 	mod += 1
+	
+	if not tkinter.messagebox.askokcancel(message=f"Reinstall {fmod[mod][0]}?"):
+		return	
+		
 	res = subprocess.run([merrygui.pip, "install", "--force-reinstall", fmod[mod][0]], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
+	merrygui.modules.delete(mod-1)
+	merrygui.modules.insert(mod-1, fmod[mod][0].split(' ')[0])
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
