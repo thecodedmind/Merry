@@ -646,7 +646,10 @@ def self_update():
 		upd.pack()
 		upd2.pack()
 	else:
-		merrygui.infolab.config(text="Merry is up-to-date!")
+		try:
+			merrygui.infolab.config(text="Merry is up-to-date!")
+		except:
+			print("Update check passed.")
 		subprocess.run(['rm', '-rf', '_tmp'])
 	#subprocess.run(['rmdir', '_tmp'])
 
