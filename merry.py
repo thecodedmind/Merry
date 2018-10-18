@@ -619,7 +619,10 @@ def self_update():
 	Repo.clone_from("https://github.com/Kaiz0r/Merry.git", scriptdir+"_tmp")
 	new_file = os.path.getsize(scriptdir+"_tmp/merry.py")
 	this_file = os.path.getsize(scriptdir+"merry.py")
-	print(f"{this_file} and {new_file}")
+	if this_file != new_file:
+		tkinter.messagebox.showinfo(message="There is an update!")
+	else:
+		tkinter.messagebox.showinfo(message="No updates.")
 	#subprocess.run(['rmdir', '_tmp'])
 	
 class pipGuiMan:
@@ -695,3 +698,5 @@ class pipGuiMan:
 merrygui = pipGuiMan()	
 merrygui.mainwin.mainloop()
 print("Closing.")
+subprocess.run(['rm', '-rf', '_tmp'])
+
