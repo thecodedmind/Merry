@@ -650,7 +650,27 @@ def open_config_win():
 	en2.insert(0, basecfg['output_win_size'])
 	
 def opengithub(event):
-    webbrowser.open_new(r"https://github.com/Kaiz0r/Merry")
+	if not running_net_check():
+		return
+		
+	webbrowser.open(r"https://github.com/Kaiz0r/Merry")
+
+def openpypi():
+	if not running_net_check():
+		return
+		
+	try:
+		mod = merrygui.modules.curselection()[0]
+	except IndexError:
+		tkinter.messagebox.showerror(title="Error", message="No package selected.")
+		return
+		
+	mod += 1
+	
+	if not tkinter.messagebox.askokcancel(message=f"Open https://pypi.org/project/{fmod[mod][0]}?"):
+		return	
+		
+	webbrowser.open(r"https://pypi.org/project/"+fmod[mod][0]+"/")
     		
 def about():
 	w = tkinter.Tk()
@@ -882,6 +902,7 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
 		self.filemenu.add_command(label="Edit Ignored modules", command=edit_ignores)
+		self.filemenu.add_command(label="Open module on pypi", command=openpypi)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Open config...", command=open_config_win)
 		self.filemenu.add_command(label="Check for updates", command=self_update)
@@ -902,7 +923,7 @@ class pipGuiMan:
 			get_updates(self)
 		if boolinate(self.config['auto_update_check_self']) and self.online:
 			self_update()	
-			
+	
 merrygui = pipGuiMan()	
 merrygui.mainwin.mainloop()
 print("Closing.")
