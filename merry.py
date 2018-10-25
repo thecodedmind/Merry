@@ -20,10 +20,9 @@ Idea: every time a character is typed or deleted, check len of the entry box get
 
 changelog = """Update checking.
 Config windows.
-Various fixes.
-Module ignore list."""
+Various fixes."""
 
-version = "18.10.18.56"
+version = "18.10.18"
 
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
@@ -113,15 +112,7 @@ def running_net_check():
 	else:
 		print("Network test passed.")
 		return True
-
-"""
-	shadow = copy.copy(data)
-	ls = getConfig()['ignores']
-	for item in shadow:
-		if shadow[item][0] in ls:
-			print(f"Deleting {item}")
-			del data[item]
-			"""		
+			
 def build_package_dict(output):
 	global fmod
 	lines = output.split("\n")
@@ -130,16 +121,13 @@ def build_package_dict(output):
 	i = 0
 	for item in modules_outdated:
 		f = item.split(" ")
-		ls = getConfig()['ignores']
-		print(f[0])
-		if f[0] not in ls:
-			m = []
-			i += 1
-			for fi in f:
-				if fi:
-					m.append(fi)
-			if len(m) > 0:
-				fmod[i] = m
+		m = []
+		i += 1
+		for fi in f:
+			if fi:
+				m.append(fi)
+		if len(m) > 0:
+			fmod[i] = m
 	return fmod
 
 def get_modules(host):
@@ -154,10 +142,8 @@ PyQt5-sip  4.19.11
 setuptools 39.2.0
 """
 	else:
-		res = subprocess.run([host.pip, "list"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+		res = subprocess.run([host.pip, "list"], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
-		output += str(res.stderr,"latin-1")
 	data = build_package_dict(output)
 	host.modules.delete(0, tkinter.END)
 	i = 0
@@ -170,8 +156,6 @@ setuptools 39.2.0
 	merrygui.infolab.config(text=f"{i} modules found.")
 	
 def get_updates(host):
-	if not running_net_check():
-		return
 	debug = False
 	if debug:
 		output = """Package    Version   Latest    Type 
@@ -183,17 +167,10 @@ PyQt5-sip  4.19.11   4.19.12   wheel
 setuptools 39.2.0    40.2.0    wheel
 """
 	else:
-		res = subprocess.run([host.pip, "list", "--outdated"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+		res = subprocess.run([host.pip, "list", "--outdated"], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
-		output_err = str(res.stderr,"latin-1")
-		if len(output_err) > 0:
-			tkinter.messagebox.showerror(message=output_err)
-			return
-			
 	data = build_package_dict(output)
 	host.modules.delete(0, tkinter.END)
-	
 	if len(data) > 0:
 		for item in data:
 			host.modules.insert(tkinter.END, data[item][0])
@@ -241,12 +218,10 @@ def install_moduletext(module):
 	print("will install "+module)
 
 	if merrygui.usermode:
-		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		res = subprocess.run([merrygui.pip, "install", "--user", module.get()], stdout=subprocess.PIPE)
 	else:
-		res = subprocess.run([merrygui.pip, "install", module], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+		res = subprocess.run([merrygui.pip, "install", module], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
-	output += str(res.stderr,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
@@ -286,10 +261,9 @@ def install_module(module):
 	coms.append(module.get())
 	print(coms)
 	
-	res = subprocess.run(coms, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	res = subprocess.run(coms, stdout=subprocess.PIPE)
 
 	output = str(res.stdout,"latin-1")
-	output += str(res.stderr,"latin-1")
 	#tkinter.messagebox.showinfo(title="Result", message=output)
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
@@ -407,11 +381,9 @@ def uninstall():
 	mod = merrygui.modules.curselection()[0]
 	mod += 1
 	if tkinter.messagebox.askokcancel(title=f"Uninstall {fmod[mod][0]}", message=f"{fmod[mod][0]} {fmod[mod][1]} will be COMPLETELY uninstalled."):
-		res = subprocess.run([merrygui.pip, "uninstall", "-y", fmod[mod][0]], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		res = subprocess.run([merrygui.pip, "uninstall", "-y", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
-		output += str(res.stderr,"latin-1")
 		merrygui.modules.delete(mod-1)
-		merrygui.modules.insert(mod-1, fmod[mod][0]+" (Removed)")
 		#r = tkinter.Tk()
 		#lb = tkinter.Label(r, text=output, justify="left")
 		#lb.grid()
@@ -429,6 +401,7 @@ def uninstall():
 		master.title("Result")
 		master.mainloop()
 
+	
 def update():
 	if not running_net_check():
 		return
@@ -443,10 +416,6 @@ def update():
 			res = subprocess.run([merrygui.pip, "install", "--upgrade", "--user", fmod[mod][0]], stdout=subprocess.PIPE)
 		output = str(res.stdout,"latin-1")
 		merrygui.modules.delete(mod-1)
-		merrygui.modules.insert(mod-1, fmod[mod][0]+" (Updated)")
-		#session_updates.append(fmod[mod][0])
-		#build_package_dict(session_update)
-		#merrygui.modules.selection_set("--==UPDATED==--")
 		#r = tkinter.Tk()
 		#lb = tkinter.Label(r, text=output, justify="left")
 		#lb.grid()
@@ -464,6 +433,7 @@ def update():
 		master.title("Result")
 		master.mainloop()
 
+		
 def onselect(evt):
 	w = evt.widget
 	try:
@@ -534,8 +504,10 @@ def pipshow():
 	master.title("Result")
 	master.mainloop()
 
+
 def piprein():
-	if not running_net_check():
+	if not merrygui.online:
+		tkinter.messagebox.showerror("Network connection not found!")
 		return
 		
 	try:
@@ -543,16 +515,9 @@ def piprein():
 	except IndexError:
 		tkinter.messagebox.showerror(title="Error", message="No package selected.")
 		return
-		
 	mod += 1
-	
-	if not tkinter.messagebox.askokcancel(message=f"Reinstall {fmod[mod][0]}?"):
-		return	
-		
 	res = subprocess.run([merrygui.pip, "install", "--force-reinstall", fmod[mod][0]], stdout=subprocess.PIPE)
 	output = str(res.stdout,"latin-1")
-	merrygui.modules.delete(mod-1)
-	merrygui.modules.insert(mod-1, fmod[mod][0].split(' ')[0])
 	#r = tkinter.Tk()
 	#lb = tkinter.Label(r, text=output, justify="left")
 	#lb.grid()
@@ -650,27 +615,7 @@ def open_config_win():
 	en2.insert(0, basecfg['output_win_size'])
 	
 def opengithub(event):
-	if not running_net_check():
-		return
-		
-	webbrowser.open(r"https://github.com/Kaiz0r/Merry")
-
-def openpypi():
-	if not running_net_check():
-		return
-		
-	try:
-		mod = merrygui.modules.curselection()[0]
-	except IndexError:
-		tkinter.messagebox.showerror(title="Error", message="No package selected.")
-		return
-		
-	mod += 1
-	
-	if not tkinter.messagebox.askokcancel(message=f"Open https://pypi.org/project/{fmod[mod][0]}?"):
-		return	
-		
-	webbrowser.open(r"https://pypi.org/project/"+fmod[mod][0]+"/")
+    webbrowser.open_new(r"https://github.com/Kaiz0r/Merry")
     		
 def about():
 	w = tkinter.Tk()
@@ -809,44 +754,6 @@ def changes():
 	master.title("Changes")
 	#master.mainloop()
 	T.insert('1.0',changelog)
-
-def add_ignore(modules, en):
-	if len(en.get()) == 0:
-		tkinter.messagebox.showerror(message="No module name entered.")
-		return
-		
-	ls = getConfig()['ignores']
-	modules.insert(tkinter.END, en.get())
-	ls.append(en.get())
-	setConfig("ignores", ls)
-	
-def rem_ignore(modules):
-	try:
-		mod = modules.curselection()[0]
-	except:
-		return
-	ls = getConfig()['ignores']
-	ls.remove(ls[mod])
-	setConfig("ignores", ls)
-	modules.delete(mod)
-	
-def edit_ignores():
-	ls = getConfig()['ignores']
-	w = tkinter.Tk()
-	w.title("Ignores")
-	modules = tkinter.Listbox(w, height=15)
-	en = tkinter.Entry(w)
-	addmod = partial(add_ignore, modules, en)
-	remmod = partial(rem_ignore, modules)
-	b_add = tkinter.Button(w, text="+", command=addmod)
-	b_rem = tkinter.Button(w, text="-", command=remmod)
-	
-	modules.grid(columnspan=2)
-	b_add.grid(column=0, row=1)
-	b_rem.grid(column=1, row=1)
-	en.grid(columnspan=2, row=2)
-	for item in ls:
-		modules.insert(tkinter.END, item)
 	
 class pipGuiMan:
 	def __init__(self):
@@ -901,8 +808,6 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Check Libraries integrity", command=pipcheck)
 		self.filemenu.add_command(label="Show info on selected package", command=pipshow)
 		self.filemenu.add_command(label="Force reinstall selected package", command=piprein)
-		self.filemenu.add_command(label="Edit Ignored modules", command=edit_ignores)
-		self.filemenu.add_command(label="Open module on pypi", command=openpypi)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Open config...", command=open_config_win)
 		self.filemenu.add_command(label="Check for updates", command=self_update)
@@ -923,7 +828,7 @@ class pipGuiMan:
 			get_updates(self)
 		if boolinate(self.config['auto_update_check_self']) and self.online:
 			self_update()	
-	
+			
 merrygui = pipGuiMan()	
 merrygui.mainwin.mainloop()
 print("Closing.")
