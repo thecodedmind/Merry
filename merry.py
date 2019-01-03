@@ -9,11 +9,11 @@ import os
 import asyncio
 import webbrowser
 from git import Repo
+from kui import *
 
+changelog = """Pypi browser"""
 
-changelog = """Binary support"""
-
-version = "18.10.25"
+version = "19.01.03"
 
 scriptdir = os.path.dirname(os.path.abspath(__file__))+"/"
 merrygui = None
@@ -180,7 +180,6 @@ setuptools 39.2.0    40.2.0    wheel
 		if len(output_err) > 0:
 			tkinter.messagebox.showerror(message=output_err)
 			return
-			
 	data = build_package_dict(output)
 	host.modules.delete(0, tkinter.END)
 	
@@ -212,7 +211,6 @@ def dumpConfig(data):
 
 def install_binary():
 	binscript = '''#!/usr/bin/env python3
-
 import subprocess
 import os
 path = os.path.expanduser('~')
@@ -222,6 +220,7 @@ subprocess.run(['python3', path+'/merry/merry.py'])'''
 	with open(path+"/.local/bin/merry", 'w+') as f:
 		f.write(binscript)
 	subprocess.run(['chmod', 'u+x', path+"/.local/bin/merry"])
+	
 def boolinate(string):
 	try:
 		truth = ['true', '1', 'yes', 'on']
@@ -849,7 +848,85 @@ def edit_ignores():
 	en.grid(columnspan=2, row=2)
 	for item in ls:
 		modules.insert(tkinter.END, item)
+
+def pipc_installf(s):
+	res = subprocess.run(s.split(), stdout=subprocess.PIPE)
+	output = str(res.stdout,"latin-1")	
+	OutputWindow(text=output, title=f"Installer ({merrygui.pip})")
+
+def pipc_install(s):
+	w = tkinter.Tk()
+	w.title(f"Install {s}")
+	usermode = boolinate(getConfig()['add_user_flag'])
+	en = tkinter.Entry(w, width=50)
+	en.insert('end', f"{merrygui.pip} install {s} {'--user ' if usermode else ''}--upgrade")
+	b = tkinter.Button(w, text="Submit", command=lambda: pipc_installf(en.get()))
+	en.pack()
+	b.pack()
 	
+def open_page(project_name, evt=None):
+	url = f"https://pypi.org/pypi/{project_name}/json"
+	print(f"Opening {url}")
+	
+	res = ufilter(requests.get(url).text)
+	data = json.loads(res)
+	
+	project = OutputWindow(title=f"{project_name} {data['info']['version']}")
+
+	project.insert(f"DIRECT INSTALL (Via {merrygui.pip})", link_id=project_name+"_install", command=lambda event: pipc_install(project_name))
+
+		
+	project.insert(f"{data['info']['author'] or 'No Author Name'} ({data['info']['author_email'] or 'No contact'})")
+	if data['info']['home_page']:
+		project.insert(data['info']['home_page'], link_id=project_name+"_out", command=lambda event: webbrowser.open(data['info']['home_page']), sep="")
+		project.insert("[EXTERNAL]", font="grey")
+		
+	project.insert(data['info']['summary'])
+	project.insert(f"Required Python: {data['info']['requires_python'] or 'Any'}")
+	project.insert("\n")
+	project.insert(ufilter(data['info']['description']), font="grey")
+	project.insert('\n'.join(data['info']['classifiers']))
+	
+def pypbrowser(win):
+	updates = requests.get("https://pypi.org/rss/updates.xml").text
+	newpackages = requests.get("https://pypi.org/rss/packages.xml").text
+	
+	pyp = OutputWindow(master_window=win)
+	pyp.frame.grid(row=0, column=7, rowspan=5, sticky="nswe")	
+	srch = tkinter.Entry(win)
+	srch.grid(row=5, column=7, sticky="ew")
+	srch.bind('<Return>', lambda event: open_page(srch.get()))
+	ups = BeautifulSoup(updates, 'xml')
+	nps = BeautifulSoup(newpackages, 'xml')
+	pyp.insert(ups.find('title').text, font=['size', 'red'], size=20)
+	pyp.insert(nps.find('description').text, font="grey")
+	i = 0
+	for item in ups.find_all('item'):
+		i += 1
+		lnk = partial(open_page, item.title.text.split(" ")[0])
+		pyp.insert(f"[ {i} ] {item.title.text}", sep=" (")
+		pyp.insert(f"Open", link_id=f"link_{i}", command=lnk, sep="")
+		pyp.insert(")")
+		pyp.insert(item.description.text, font="grey", size=10)
+		if i > 9:
+			break
+	
+	pyp.insert("\n")
+	pyp.insert(nps.find('title').text, font=['size', 'red'], size=20)	
+	pyp.insert(nps.find('description').text, font="grey")
+	i = 0
+	for item in nps.find_all('item'):
+		i += 1
+		lnkn = partial(open_page, item.title.text.split(" ")[0])
+		pyp.insert(f"[ {i} ] {item.title.text}", sep=" (")
+		pyp.insert(f"Open", link_id=f"link_{i+10}", command=lnkn, sep="")
+		pyp.insert(")")
+		pyp.insert(item.description.text, font="grey")
+		if i > 9:
+			break
+	#pyp.insert("Module test", link_id="homeid", command=lambda event: JSONBrowser("https://pypi.org/pypi/requests/json"))
+	
+
 class pipGuiMan:
 	def __init__(self):
 		self.online = internet()
@@ -858,18 +935,20 @@ class pipGuiMan:
 		self.update_check_on_start = boolinate(self.config['auto_update_check'])
 		self.usermode = boolinate(self.config['add_user_flag'])
 		self.win_size = self.config['output_win_size']
+		
 		self.mainwin = tkinter.Tk()
-		self.modules = tkinter.Listbox(self.mainwin, height=15)
-		self.modules.grid(rowspan=6, columnspan=4)
+		self.modules = tkinter.Listbox(self.mainwin)
+		self.modules.grid(row=0, column=0, rowspan=5, columnspan=5, sticky="nswe")
 		self.modules_scroll = tkinter.Scrollbar(self.mainwin)
-		self.modules_scroll.grid(column=4, row=0, rowspan=5, sticky="ns")
+		self.modules_scroll.grid(column=5, row=0, rowspan=5, columnspan=1, sticky="ns")
 		self.modules_scroll.config(command=self.modules.yview)
 		self.modules.config(yscrollcommand=self.modules_scroll.set)	
 		self.modules.bind('<<ListboxSelect>>', onselect)
+		
 		ub = partial(get_updates, self)
 		ubi = partial(get_modules, self)
 		self.infolab = tkinter.Label(self.mainwin, text="Selected info will appear here.")
-		self.infolab.grid(row=6, columnspan=6)
+		self.infolab.grid(row=5, columnspan=7, sticky="ew")
 		self.chicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'py.png'))
 		self.listicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'list.png'))
 		self.dlicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'dl.png'))
@@ -877,19 +956,19 @@ class pipGuiMan:
 		self.upicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'upg.png'))
 		self.b_updatecheck = tkinter.Button(self.mainwin, image=self.chicon, compound="left", text="Check for updates", command=ub, cursor="hand1", width=150, anchor="w")
 		self.b_listall = tkinter.Button(self.mainwin, text="Show list", image=self.listicon, compound="left", command=ubi, cursor="hand1", width=150, anchor="w")
-		self.b_install = tkinter.Button(self.mainwin, image=self.dlicon, compound="left", text="Install...", command=install, cursor="hand1", width=150, anchor="w")
+		self.b_install = tkinter.Button(self.mainwin, image=self.dlicon, compound="left", text="Install...", command=install, cursor="hand1", width=int(150/2), anchor="w")
 		self.b_uninstall = tkinter.Button(self.mainwin, image=self.unicon, compound="left", text="Uninstall", command=uninstall, state="disabled", cursor="hand1", width=150, anchor="w")
 		self.b_update = tkinter.Button(self.mainwin, image=self.upicon, compound="left", text="Update", command=update, state="disabled", cursor="hand1", width=150, anchor="w")
 		
-		self.b_updatecheck.grid(column=5, row=0)
+		self.b_updatecheck.grid(column=6, row=0, sticky="nswe")
 		CreateToolTip(self.b_updatecheck, "Gets outdated modules list.\nNOTE: Will take a few moments.")
-		self.b_listall.grid(column=5, row=1)
+		self.b_listall.grid(column=6, row=1, sticky="nswe")
 		CreateToolTip(self.b_listall, "Gets installed modules list.\nNOTE: Will take a few moments.")
-		self.b_install.grid(column=5, row=2)
+		self.b_install.grid(column=6, row=2, sticky="nsew")
 		CreateToolTip(self.b_install, "Opens the Installer window. Enter a module name to download and install using pip.")
-		self.b_uninstall.grid(column=5, row=3)
+		self.b_uninstall.grid(column=6, row=3, sticky="nswe")
 		CreateToolTip(self.b_uninstall, "Completely uninstalls the module selected in the list.")
-		self.b_update.grid(column=5, row=4)
+		self.b_update.grid(column=6, row=4, sticky="nswe")
 		CreateToolTip(self.b_update, "Updates the selected module in the list.")
 		self.mainwin.title("Merry "+version)
 		imgicon = tkinter.PhotoImage(file=os.path.join(scriptdir,'icon.png'))
@@ -912,6 +991,8 @@ class pipGuiMan:
 		self.filemenu.add_command(label="Install Binary file", command=install_binary)
 		self.filemenu.add_separator()
 		self.filemenu.add_command(label="Exit", command=self.mainwin.destroy)
+		self.menu.add_command(label="Pypi >", command=lambda: pypbrowser(self.mainwin))
+		#self.men.add_command(label="Open Pypi Browser", command=lambda event: pypbrowser(self.mainwin))
 		
 		if not self.online:
 			self.b_updatecheck.config(state="disabled")
@@ -924,13 +1005,29 @@ class pipGuiMan:
 			
 		if self.update_check_on_start and self.online:
 			get_updates(self)
+			
 		if boolinate(self.config['auto_update_check_self']) and self.online:
 			self_update()	
+		
+		#if self.online:
+			#pypbrowser(self.mainwin)
+			#self.pb = tkinter.Button(self.mainwin, text=">")
+			#self.pb.grid(row=5, column=6)
+			
+		for i in range(0, 7):
+			#print(f"column {i}")
+			self.mainwin.columnconfigure(i, weight=1)
+		
+		for i in range(0, 6):
+			#print(f"row {i}")
+			self.mainwin.rowconfigure(i, weight=1)
+		
 
 def begin():
 	global merrygui
 	merrygui = pipGuiMan()	
 	merrygui.mainwin.mainloop()
+	
 if __name__ == "__main__":	
 	begin()
 	print("Closing.")
