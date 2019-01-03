@@ -9,15 +9,12 @@ The script also supports printing out your installed modules and allowing you to
 Merry also supports installing modules, pressing Install opens up a little box where you can enter in the module you want to downlod from pip.
 Now there is Binary support. Clicking the menu option for Install Binary adds a launcher to ~/.local/bin/, this lets you launch the gui just by entering the command "merry" instead of running through python.
 You can see the entire bin script in the `install_binary()` function.
+Latest additon adds Pypi browser support, adding a basic text-based navigation of the pypi archives, pulling module information using the JSON API.
 
 # Known issues
 The GUI looks like it hangs when its doing the updating/background stuff, everything is still working fine, but it will look frozen.
 
 # Planned features
-Adding more pip commands support.
-
-Version Pinning/Locking.
-
 Installing from Git support. (Unsure if this works at all, it might already)
 
 Multi-selecting modules in the listbox.
