@@ -29,6 +29,7 @@ Icon created by https://www.deviantart.com/lustriouscharming
 
 # Requirements
 Requires GitPython and Tkinter
+Also requires my kui module that contains some GUI stuff. available; https://github.com/Kaiz0r/python3-kui
 
 
 
