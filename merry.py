@@ -20,6 +20,8 @@ merrygui = None
 fmod = {}
 checkbox_force_reinstall = 0
 checkbox_full_search = 0
+pyp = None
+pypfr = None
 
 class CreateToolTip(object):
     """
@@ -863,14 +865,43 @@ def pipc_install(s):
 	b = tkinter.Button(w, text="Submit", command=lambda: pipc_installf(en.get()))
 	en.pack()
 	b.pack()
+
+"""
+Pypi stats, need to specify headers; “Content-Type: application/json”  “Accept: application/json”
+https://pypi.org/stats/
+
+for full list of pyp packages, then listify and use that for searching maybe
+https://pypi.org/simple/ 
+"""
+def pypstats(evt=None):
+	
+	res = requests.get("https://pypi.org/stats/", headers={'Content-Type':'application/json', 'Accept':'application/json'}).text
+	project = OutputWindow(title=f"Stats")
+	s = BeautifulSoup(res, 'html5lib')
+	data = json.loads(s.body.text)
+	project.insert(data)
+	
+def open_search(project_name, evt=None):
+	if not project_name:
+		tkinter.messagebox.showerror(message="No module name entered.")
+		return
+	project = OutputWindow(title=f"Search: {project_name}")
+	project.insert("Work-in-progress.")
 	
 def open_page(project_name, evt=None):
+	if not project_name:
+		tkinter.messagebox.showerror(message="No module name entered.")
+		return
 	url = f"https://pypi.org/pypi/{project_name}/json"
 	print(f"Opening {url}")
-	
+	# add support for ['info']['requires_dist'] to show required packages
+	#also ['info']['platform']
 	res = ufilter(requests.get(url).text)
-	data = json.loads(res)
-	
+	try:
+		data = json.loads(res)
+	except:
+		tkinter.messagebox.showerror(message="Error loading page. Bad module name?")
+		return
 	project = OutputWindow(title=f"{project_name} {data['info']['version']}")
 
 	project.insert(f"DIRECT INSTALL (Via {merrygui.pip})", link_id=project_name+"_install", command=lambda event: pipc_install(project_name))
@@ -888,16 +919,35 @@ def open_page(project_name, evt=None):
 	project.insert('\n'.join(data['info']['classifiers']))
 	
 def pypbrowser(win):
+	global pypfr, pyp
+	if pypfr is not None:
+		pypfr.destroy()
+		pypfr = None
+		pyp.frame.destroy()
+		pyp = None
+		return
 	updates = requests.get("https://pypi.org/rss/updates.xml").text
 	newpackages = requests.get("https://pypi.org/rss/packages.xml").text
 	
 	pyp = OutputWindow(master_window=win)
-	pyp.frame.grid(row=0, column=7, rowspan=5, sticky="nswe")	
-	srch = tkinter.Entry(win)
-	srch.grid(row=5, column=7, sticky="ew")
-	srch.bind('<Return>', lambda event: open_page(srch.get()))
+	pyp.frame.grid(row=0, column=7, rowspan=5, columnspan=6, sticky="nswe")	
+	pypfr = tkinter.Frame(win)
+	pypfr.grid(row=5, column=7, columnspan=6)
+	tkinter.Label(pypfr, text="Open Module: ").grid(row=0, column=0)
+	tkinter.Label(pypfr, text="Search Modules: ").grid(row=1, column=0)
+	srch = tkinter.Entry(pypfr, width=30)
+	srch.grid(row=0, column=1, sticky="ew", columnspan=3)
+	srchb = tkinter.Button(pypfr, text=">", width=1, command=lambda: open_page(srch.get()))
+	srchb.grid(row=0, column=4)
+	
+	srch2 = tkinter.Entry(pypfr, width=30)
+	srch2.grid(row=1, column=1, sticky="ew", columnspan=3)
+	srchb2 = tkinter.Button(pypfr, text=">", width=1, command=lambda: open_search(srch2.get()))
+	srchb2.grid(row=1, column=4)
 	ups = BeautifulSoup(updates, 'xml')
 	nps = BeautifulSoup(newpackages, 'xml')
+	pyp.insert(f"PYP STATS", link_id=f"link_stats", command=lambda event: pypstats())
+	
 	pyp.insert(ups.find('title').text, font=['size', 'red'], size=20)
 	pyp.insert(nps.find('description').text, font="grey")
 	i = 0
@@ -1017,8 +1067,8 @@ class pipGuiMan:
 		for i in range(0, 7):
 			#print(f"column {i}")
 			self.mainwin.columnconfigure(i, weight=1)
-		
-		for i in range(0, 6):
+		self.mainwin.columnconfigure(5, weight=0)
+		for i in range(0, 5):
 			#print(f"row {i}")
 			self.mainwin.rowconfigure(i, weight=1)
 		
