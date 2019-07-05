@@ -929,7 +929,7 @@ def pypbrowser(win):
 	updates = requests.get("https://pypi.org/rss/updates.xml").text
 	newpackages = requests.get("https://pypi.org/rss/packages.xml").text
 	
-	pyp = OutputWindow(master_window=win)
+	pyp = OutputWindow(win)
 	pyp.frame.grid(row=0, column=7, rowspan=5, columnspan=6, sticky="nswe")	
 	pypfr = tkinter.Frame(win)
 	pypfr.grid(row=5, column=7, columnspan=6)

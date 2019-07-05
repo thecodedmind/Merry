@@ -7,19 +7,18 @@ import requests
 import json
 
 class OutputWindow:
-	def __init__(self, *, title="Message", text="", master_window=None, geometry="480x240", font=[], size=8, bg='white', format_links_html=False):
-	#	master = tkinter.Tk()
+	def __init__(self, master_window=None, *, title="Message", text="", geometry="480x240", font=[], size=8, bg='white', format_links_html=False):
 		if master_window:
 			self.frame = tkinter.Frame(master_window)
-			master = self.frame
+			self.master = self.frame
 		else:
-			master = tkinter.Tk()
-			master.geometry(geometry)
-			master.title(title)
+			self.master = tkinter.Toplevel()
+			self.master.geometry(geometry)
+			self.master.title(title)
 			
-		S = tkinter.Scrollbar(master)
+		S = tkinter.Scrollbar(self.master)
 		S.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
-		self.textbox = tkinter.Text(master, height=20, width=70)
+		self.textbox = tkinter.Text(self.master, height=20, width=70)
 		self.textbox.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.YES)
 		S.config(command=self.textbox.yview)
 		self.textbox.config(yscrollcommand=S.set)	
@@ -33,13 +32,14 @@ class OutputWindow:
 		self.textbox.tag_configure('green', foreground='green')
 		self.textbox.tag_configure('orange', foreground='orange')
 		self.textbox.tag_configure('grey', foreground='grey')
+		self.textbox.tag_configure('gray', foreground='grey')
 		self.textbox.tag_configure('bold', font=('bold'))
 		self.textbox.tag_configure('italics', font=('italics'))
 		self.textbox.tag_configure('size', font=(size))
 		self.textbox.configure(bg=bg)
 		self.textbox.insert('end', text, font)
 		self.textbox.config(state="disabled")
-		
+	
 	def delete(self, index, end_index):
 		self.textbox.config(state="normal")
 		self.textbox.delete(index, end_index)
@@ -75,16 +75,16 @@ class OutputWindow:
 		print(event.widget)
 
 class PageBrowser:
-	def __init__(self, page, *, master_window = "", title = "PageBrowser", base_url = "", data_tags = ['p', 'h2', 'a'], debug=False):
+	def __init__(self, page, *, master_window = "", title = "PageBrowser", base_url = "", data_tags = ['p', 'h2', 'a'], debug=False, parser='html5lib', headers={}):
 		if base_url:
 			self.page = base_url+page
 		else:
 			self.page = page
 		print(f"Query send: {self.page}")
-		self.data = requests.get(self.page).text
+		self.data = requests.get(self.page, headers=headers).text
 		
 		
-		soup = BeautifulSoup(self.data, 'html5lib')
+		soup = BeautifulSoup(self.data, parser)
 		
 		if debug:
 			dbg = OutputWindow(title="DEBUGGER")
